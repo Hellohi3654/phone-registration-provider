@@ -20,6 +20,6 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v3
         with:
-          path: ./packages/com.beeper.beepserv_*.deb
+          path: ./packages/thatstel.la.com.beeper.beepserv_*.deb
           name: phone-registration-provider
           if-no-files-found: error
