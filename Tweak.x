@@ -411,12 +411,12 @@ NSDictionary *getIdentifiers() {
 }
 
 %ctor {
-	NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
+	// NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
 
 	// This %ctor will be called every time identityservicesd or the settings app is restarted.
 	// So we only want it to try to reinitialize stuff if it's in identityservicesd
-	if (![bundleID isEqualToString:@"com.apple.identityservicesd"])
-		return;
+	// if (![bundleID isEqualToString:@"com.apple.identityservicesd"])
+	// 	return;
 
 	NSString *filePath = ROOT_PATH_NS(@"%@/.beepserv_wsurl");
 	NSString *wsURL = [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:nil];
