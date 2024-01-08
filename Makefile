@@ -7,7 +7,6 @@ else
 	PREFIX=$(OLDER_XCODE_PATH)/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/
 	SYSROOT=$(OLDER_XCODE_PATH)/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
 	SDKVERSION = 13.7
-	TARGET = iphone:clang:latest:11.0
 endif
 
 include $(THEOS)/makefiles/common.mk
