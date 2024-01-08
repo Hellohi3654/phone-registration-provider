@@ -402,42 +402,42 @@ NSDictionary *getIdentifiers() {
 }
 
 %ctor {
-	// NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
+	NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
 
 	// This %ctor will be called every time identityservicesd or the settings app is restarted.
 	// So we only want it to try to reinitialize stuff if it's in identityservicesd
-	// if (![bundleID isEqualToString:@"com.apple.identityservicesd"]) {
-	//	[[NSDistributedNotificationCenter defaultCenter] addObserverForName: kNotificationUpdateState
-	//		object: nil
-	//		queue: [NSOperationQueue mainQueue]
-	//		usingBlock: ^(NSNotification *notification)
-	//	{
-	//		NSDictionary *state = notification.userInfo;
-	//		LOG(@"Received broadcasted state: %@", state);
-	//		currentState = [BPState.alloc initWithCode:state[kCode] secret:state[kSecret] connected:((NSNumber *)state[kConnected]).boolValue error:state[kError]];
-	//		NSError *diskWriteError;
-	//		[currentState writeToDiskWithError:&diskWriteError];
-	//		if (diskWriteError != nil) {
-	//			LOG(@"Writing state to disk failed with error: %@", diskWriteError);
-	//		}
-	//	}];
-	//	[[NSDistributedNotificationCenter defaultCenter]
-	//		postNotificationName: kNotificationRequestStateUpdate
-	//		object: nil
-	//		userInfo: nil
-	//	];
-	//	return;
-	// }
+	if (![bundleID isEqualToString:@"com.apple.identityservicesd"]) {
+		[[NSDistributedNotificationCenter defaultCenter] addObserverForName: kNotificationUpdateState
+			object: nil
+			queue: [NSOperationQueue mainQueue]
+			usingBlock: ^(NSNotification *notification)
+		{
+			NSDictionary *state = notification.userInfo;
+			LOG(@"Received broadcasted state: %@", state);
+			currentState = [BPState.alloc initWithCode:state[kCode] secret:state[kSecret] connected:((NSNumber *)state[kConnected]).boolValue error:state[kError]];
+			NSError *diskWriteError;
+			[currentState writeToDiskWithError:&diskWriteError];
+			if (diskWriteError != nil) {
+				LOG(@"Writing state to disk failed with error: %@", diskWriteError);
+			}
+		}];
+		[[NSDistributedNotificationCenter defaultCenter]
+			postNotificationName: kNotificationRequestStateUpdate
+			object: nil
+			userInfo: nil
+		];
+		return;
+	}
 	
-	// [[NSDistributedNotificationCenter defaultCenter] addObserverForName: kNotificationRequestStateUpdate
-	//	object: nil
-	//	queue: [NSOperationQueue mainQueue]
-	//	usingBlock: ^(NSNotification *notification)
-	// {
-	//	if (currentState) {
-	//		[currentState broadcast];
-	//	}
-	// }];
+	[[NSDistributedNotificationCenter defaultCenter] addObserverForName: kNotificationRequestStateUpdate
+		object: nil
+		queue: [NSOperationQueue mainQueue]
+		usingBlock: ^(NSNotification *notification)
+	{
+		if (currentState) {
+			[currentState broadcast];
+		}
+	}];
 
 	NSString *filePath = ROOT_PATH_NS(@"/.beepserv_wsurl");
 	NSString *wsURL = [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:nil];
