@@ -99,51 +99,40 @@ void log_impl(NSString *logStr) {
 }
 
 - (void)getValidationDataWithCompletion:(void(^__nonnull)(NSError * __nullable, NSData * __nullable))completion {
+	// Check if we have validation data
+	if (validationData != nil && validationDataExpiry > (int)[NSDate.date timeIntervalSince1970]) {
+		LOG(@"Validation data already exists, using that");
+		completion(nil, validationData);
+		return;
+	}
+	
+	// Just start running the whole registration process so that we can get the validation data
+	IDSDAccountController *controller = [%c(IDSDAccountController) sharedInstance];
+	NSArray<IDSDAccount *> *accounts = controller.accounts;
+	
+	for (IDSDAccount *acc in accounts) {
+		LOG(@"Account: %@, Registration: %@", acc, acc.registration);
+		
+		// Only continue if it's an iMessage account
+		if (!acc.service || ![acc.service.identifier isEqual: @"com.apple.madrid"]) {
+			continue;
+		}
+		
+		if (!acc.registration) {
+			LOG(@"Account without registration found, trying to activate it");
+			// Calling this in the validation queue async thread crashes the process,
+			// so this needs to happen outside of that
+			[acc activateRegistration];
+		}
+		
+		LOG(@"Trying to reregister account");
+		// This will lead to -[IDSRegistrationMessage setValidationData:] being called
+		[acc reregister];
+	}
+	
 	dispatch_async(self.validationQueue, ^{
 		validationDataCompletion = dispatch_semaphore_create(0);
 		currentError = nil;
-
-		// Check if we have validation data
-		if (validationData != nil && validationDataExpiry > (int)[NSDate.date timeIntervalSince1970]) {
-			LOG(@"Validation data already exists, using that");
-			completion(nil, validationData);
-			return;
-		}
-
-		// Just start running the whole registration process so that we can get the validation data
-		IDSDAccountController *controller = [%c(IDSDAccountController) sharedInstance];
-		NSArray<IDSDAccount *> *accounts = controller.accounts;
-
-		IDSDAccount *account;
-
-		for (IDSDAccount *acc in accounts) {
-			LOG(@"Account: %@, Registration: %@", acc, acc.registration);
-			if (!acc.registration) {
-				[acc setRegistrationStatus:-1 error:nil alertInfo:nil];
-				[acc _checkRegistration];
-				LOG(@"Called check on %@", acc);
-			}
-
-			if (acc.registration) {
-				LOG(@"Found good registration in account");
-				account = acc;
-				break;
-			}
-		}
-
-		IDSRegistration* reg = account.registration;
-
-		if (!reg) {
-			LOG(@"No account had a valid registration, returning");
-			NSError *error = [NSError errorWithDomain:kSuiteName code:2 userInfo:@{@"Error Reason": @"No account had a valid registration"}];
-			completion(error, nil);
-			return;
-		}
-
-		LOG(@"Calling registration with %@", reg);
-
-		id<NSObject> result = [[%c(IDSRegistrationCenter) sharedInstance] _sendAuthenticateRegistration:reg];
-		LOG(@"Got registration result: %@", result);
 
 		NSError *error;
 
@@ -480,3 +469,36 @@ NSDictionary *getIdentifiers() {
 	identifiers = getIdentifiers();
 	LOG(@"Got identifiers: %@", identifiers);
 }
+
+// Logging events that could be useful for debugging
+%hook IDSRegistrationController
+	- (void) _notifyRegistrationStarting:(id)arg1 {
+		LOG(@"IDSRegistrationController _notifyRegistrationStarting: %@", arg1);
+		%orig;
+	}
+	
+	- (void) _notifyRegistrationUpdated:(id)arg1 {
+		LOG(@"IDSRegistrationController _notifyRegistrationUpdated: %@", arg1);
+		%orig;
+	}
+	
+	- (void) _notifyRegistrationSuccess:(id)arg1 {
+		LOG(@"IDSRegistrationController _notifyRegistrationSuccess: %@", arg1);
+		%orig;
+	}
+	
+	- (void) _notifyRegistrationFailure:(id)arg1 error:(long long)arg2 info:(id)arg3 {
+		LOG(@"IDSRegistrationController _notifyRegistrationFailure: %@, error code: %lld, info: %@", arg1, arg2, arg3);
+		%orig;
+	}
+	
+	- (bool) registerInfo:(id)arg1 requireSilentAuth:(bool)arg2 {
+		LOG(@"IDSRegistrationController registerInfo: %@, requireSilentAuth: %@", arg1, arg2 ? @"true" : @"false");
+		return %orig;
+	}
+	
+	- (bool) registerInfo:(id)arg1 {
+		LOG(@"IDSRegistrationController registerInfo: %@", arg1);
+		return %orig;
+	}
+%end
